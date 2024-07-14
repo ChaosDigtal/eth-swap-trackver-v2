@@ -7,6 +7,7 @@ import { Web3 } from 'web3'
 import Decimal from 'decimal.js'
 import { Client } from 'pg';
 import * as fs from 'fs';
+import { ReadableStreamDefaultController } from "stream/web";
 
 export interface AlchemyRequest extends Request {
   alchemy: {
@@ -81,11 +82,11 @@ export const getEthereumTokenUSD = async (token_address: string) => {
   }
 }
 
-function addEdge(graph: Map<string, { symbol: string, ratio: Decimal }[]>, A: string, B: string, ratio: Decimal) {
+function addEdge(graph: Map<string, { id: string, ratio: Decimal }[]>, A: string, B: string, ratio: Decimal) {
   if (graph.has(A)) {
-    graph.get(A)!.push({ symbol: B, ratio: ratio });
+    graph.get(A)!.push({ id: B, ratio: ratio });
   } else {
-    graph.set(A, [{ symbol: B, ratio: ratio }]);
+    graph.set(A, [{ id: B, ratio: ratio }]);
   }
 }
 
@@ -141,15 +142,15 @@ async function db_save_batch(events: any[], client: Client, block_creation_time:
         fromAddress,
         token0_id.toLowerCase(),
         token0_symbol,
-        safeNumber(token0_amount ?? 0).toString(),
-        safeNumber(token0_value_in_usd ?? 0).toString(),
-        safeNumber(token0_total_exchanged_usd ?? 0).toString(),
+        safeNumber(token0_amount ?? new Decimal(0)).toString(),
+        safeNumber(token0_value_in_usd ?? new Decimal(0)).toString(),
+        safeNumber(token0_total_exchanged_usd ?? new Decimal(0)).toString(),
         token1_id.toLowerCase(),
         token1_symbol,
-        safeNumber(token1_amount ?? 0).toString(),
-        safeNumber(token1_value_in_usd ?? 0).toString(),
-        safeNumber(token1_total_exchanged_usd ?? 0).toString(),
-        safeNumber(ETH2USD ?? 0).toString(),
+        safeNumber(token1_amount ?? new Decimal(0)).toString(),
+        safeNumber(token1_value_in_usd ?? new Decimal(0)).toString(),
+        safeNumber(token1_total_exchanged_usd ?? new Decimal(0)).toString(),
+        safeNumber(ETH2USD ?? new Decimal(0)).toString(),
         block_creation_time
       );
     });
@@ -206,68 +207,70 @@ async function db_save_batch(events: any[], client: Client, block_creation_time:
 
 export async function fillUSDAmounts(swapEvents: {}[], ETH2USD: Decimal, client: Client, web3: Web3, prod_client: Client) {
   if (swapEvents.length == 0) return;
-  var graph = new Map<string, { symbol: string, ratio: Decimal }[]>()
+  var graph = new Map<string, { id: string, ratio: Decimal }[]>()
 
   for (var se of swapEvents) {
-    if (se.token0.symbol && se.token1.symbol && se.token0.amount && se.token1.amount && !se.token0.amount.isNaN() && !se.token1.amount.isNaN() && !se.token0.amount.isZero() && !se.token1.amount.isZero()) {
-      addEdge(graph, se.token0.symbol, se.token1.symbol, se.token0.amount.dividedBy(se.token1.amount));
-      addEdge(graph, se.token1.symbol, se.token0.symbol, se.token1.amount.dividedBy(se.token0.amount));
+    if (se.token0.id && se.token1.id && se.token0.amount && se.token1.amount && !se.token0.amount.isNaN() && !se.token1.amount.isNaN() && !se.token0.amount.isZero() && !se.token1.amount.isZero()) {
+      addEdge(graph, se.token0.id.toLowerCase(), se.token1.id.toLowerCase(), se.token0.amount.dividedBy(se.token1.amount));
+      addEdge(graph, se.token1.id.toLowerCase(), se.token0.id.toLowerCase(), se.token1.amount.dividedBy(se.token0.amount));
     }
   }
 
-  const stack: string[] = ["GHO", "GRAI", "SEUR", "aUSDC", "BUSD", "GUSD", "CRVUSD", "EUSD", "aUSDT", "USDP", "TUSD", "MIM", "EURA", "TAI", "XAI", "USDD", "BOB", "PUSd", "EUSD", "DAI", "VEUR", "DOLA", "FRAX", "anyCRU", "anyETH", "MXNt", "LUSD", "SUSD", "USDC", "USDT", "WETH"];
+  //const stack: string[] = ["GHO", "GRAI", "SEUR", "aUSDC", "BUSD", "GUSD", "CRVUSD", "EUSD", "aUSDT", "USDP", "TUSD", "MIM", "EURA", "TAI", "XAI", "USDD", "BOB", "PUSd", "EUSD", "DAI", "VEUR", "DOLA", "FRAX", "anyCRU", "anyETH", "MXNt", "LUSD", "SUSD", "USDC", "USDT", "WETH"];
 
-  var symbol2USD = new Map<string, Decimal>();
+  const stack: string[] = ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".toLowerCase(), "0xdac17f958d2ee523a2206206994597c13d831ec7".toLowerCase(), "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".toLowerCase()];
 
-  symbol2USD.set("WETH", ETH2USD);
+  var id2USD = new Map<string, Decimal>();
+
+  id2USD.set("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".toLowerCase(), ETH2USD);
   for (var i = 0; i < stack.length - 1; ++i) {
-    symbol2USD.set(stack[i], new Decimal(1.0));
+    id2USD.set(stack[i], new Decimal(1.0));
   }
 
   while (stack.length > 0) {
-    const symbol = stack.pop();
+    const id = stack.pop();
 
-    if (!graph.has(symbol)) continue;
-    for (var right of graph.get(symbol)) {
-      if (!symbol2USD.has(right.symbol)) {
-        symbol2USD.set(right.symbol, symbol2USD.get(symbol).times(right.ratio));
-        stack.push(right.symbol);
+    if (!graph.has(id)) continue;
+    for (var right of graph.get(id)) {
+      if (!id2USD.has(right.id)) {
+        id2USD.set(right.id, id2USD.get(id).times(right.ratio));
+        stack.push(right.id);
       }
     }
   }
   for (var i = 0; i < swapEvents.length; ++i) {
-    if (symbol2USD.has(swapEvents[i].token0.symbol)) {
-      swapEvents[i].token0.value_in_usd = symbol2USD.get(swapEvents[i].token0.symbol);
+    if (id2USD.has(swapEvents[i].token0.id.toLowerCase())) {
+      swapEvents[i].token0.value_in_usd = id2USD.get(swapEvents[i].token0.id.toLowerCase());
       swapEvents[i].token0.total_exchanged_usd = swapEvents[i].token0.value_in_usd.times(swapEvents[i].token0.amount);
-      if (symbol2USD.has(swapEvents[i].token1.symbol)) {
-        swapEvents[i].token1.value_in_usd = symbol2USD.get(swapEvents[i].token1.symbol);
+      if (id2USD.has(swapEvents[i].token1.id.toLowerCase())) {
+        swapEvents[i].token1.value_in_usd = id2USD.get(swapEvents[i].token1.id.toLowerCase());
         swapEvents[i].token1.total_exchanged_usd = swapEvents[i].token1.value_in_usd.times(swapEvents[i].token1.amount);
       }
     } else {
-      stack.push(swapEvents[i].token0.symbol);
+      stack.push(swapEvents[i].token0.id.toLowerCase());
       const usdPrice = await getEthereumTokenUSD(swapEvents[i].token0.id);
       if (usdPrice == new Decimal(0)) {
         stack.pop();
         continue;
       }
-      symbol2USD.set(swapEvents[i].token0.symbol, usdPrice);
+      id2USD.set(swapEvents[i].token0.id.toLowerCase(), usdPrice);
       while (stack.length > 0) {
-        const symbol = stack.pop();
+        const id = stack.pop();
 
-        if (!graph.has(symbol)) continue;
-        for (var right of graph.get(symbol)) {
-          if (!symbol2USD.has(right.symbol)) {
-            symbol2USD.set(right.symbol, symbol2USD.get(symbol).times(right.ratio));
-            stack.push(right.symbol);
+        if (!graph.has(id)) continue;
+        for (var right of graph.get(id)) {
+          if (!id2USD.has(right.id)) {
+            id2USD.set(right.id, id2USD.get(id).times(right.ratio));
+            stack.push(right.id);
           }
         }
       }
     }
-    if (symbol2USD.has(swapEvents[i].token0.symbol)) {
-      swapEvents[i].token0.value_in_usd = symbol2USD.get(swapEvents[i].token0.symbol);
+    if (id2USD.has(swapEvents[i].token0.id.toLowerCase())) {
+      swapEvents[i].token0.value_in_usd = id2USD.get(swapEvents[i].token0.id.toLowerCase());
       swapEvents[i].token0.total_exchanged_usd = swapEvents[i].token0.value_in_usd.times(swapEvents[i].token0.amount);
-      if (symbol2USD.has(swapEvents[i].token1.symbol)) {
-        swapEvents[i].token1.value_in_usd = symbol2USD.get(swapEvents[i].token1.symbol);
+      if (id2USD.has(swapEvents[i].token1.id.toLowerCase())) {
+        swapEvents[i].token1.value_in_usd = id2USD.get(swapEvents[i].token1.id.toLowerCase());
         swapEvents[i].token1.total_exchanged_usd = swapEvents[i].token1.value_in_usd.times(swapEvents[i].token1.amount);
       }
     }
