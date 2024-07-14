@@ -81,7 +81,7 @@ export const getEthereumTokenUSD = async (token_address: string) => {
   }
 }
 
-function addEdge(graph: Map<string, string[]>, A: string, B: string, ratio: Decimal) {
+function addEdge(graph: Map<string, { symbol: string, ratio: Decimal }[]>, A: string, B: string, ratio: Decimal) {
   if (graph.has(A)) {
     graph.get(A)!.push({ symbol: B, ratio: ratio });
   } else {
