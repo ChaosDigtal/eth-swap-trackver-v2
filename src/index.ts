@@ -8,7 +8,6 @@ import Decimal from 'decimal.js';
 import {
   addAlchemyContextToRequest,
   validateAlchemySignature,
-  getEthereumUSD,
   getPairTokenSymbols,
   getCurrentTimeISOString,
   fillUSDAmounts,
@@ -27,20 +26,23 @@ const prod_client = new Client({
   port: 5432,
 });
 
-prod_client.connect((err) => {
-  if (err) {
-    console.error('Connection error', err.stack);
-  } else {
-    console.log('Connected to the prod_client database');
-  }
-});
+// prod_client.connect((err) => {
+//   if (err) {
+//     console.error('Connection error', err.stack);
+//   } else {
+//     console.log('Connected to the prod_client database');
+//   }
+// });
 
 const client = new Client({
-  host: '18.188.193.193',
-  database: 'postgres',
-  user: 'myuser',
-  password: 'Lapis@123',
-  port: 5432,
+  host: 'trading.copaicjskl31.us-east-2.rds.amazonaws.com',
+  database: 'trading',
+  user: 'creative_dev',
+  password: '4hXWW1%G$',
+  port: 5000,
+  ssl: {
+    rejectUnauthorized: false, // Bypass certificate validation
+  },
 });
 
 client.connect((err) => {
@@ -100,7 +102,7 @@ const main = async () => {
     console.log(`started parsing block:${currentBlockNumber} at: ` + getCurrentTimeISOString());
 
     // Fetch ETH price
-    var ETH_LATEST_PRICE = await getEthereumUSD();
+    var ETH_LATEST_PRICE = await getEthereumTokenUSD('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
     console.log(`Current ETH Price ${ETH_LATEST_PRICE}`);
     // Example: Extract token swap details
 

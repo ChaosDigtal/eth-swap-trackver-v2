@@ -65,12 +65,6 @@ export function validateAlchemySignature(signingKey: string) {
   };
 }
 
-export const getEthereumUSD = async () => {
-  var response = (await axios.get("https://api.coincap.io/v2/assets/ethereum")).data;
-
-  return new Decimal(response['data']['priceUsd']);
-}
-
 export const getEthereumTokenUSD = async (token_address: string) => {
   try {
     const response = await axios.get(`https://api.coingecko.com/api/v3/coins/ethereum/contract/${token_address}`);
@@ -189,6 +183,7 @@ async function db_save_batch(events: any[], client: Client, block_creation_time:
         }
       })
     }
+    continue;
 
     try {
       await prod_client.query(query, values);
