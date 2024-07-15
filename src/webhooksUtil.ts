@@ -67,9 +67,22 @@ export function validateAlchemySignature(signingKey: string) {
 
 export const getEthereumTokenUSD = async (token_address: string) => {
   try {
-    const response = await axios.get(`https://api.coingecko.com/api/v3/coins/ethereum/contract/${token_address}`);
+    // const response = await axios.get(`https://api.coingecko.com/api/v3/coins/ethereum/contract/${token_address}`);
 
-    return new Decimal(response.data.market_data.current_price.usd);
+    // return new Decimal(response.data.market_data.current_price.usd);
+    const headers = {
+      'accept': 'application/json, multipart/mixed',
+      'accept-language': 'en-US,en;q=0.9',
+      'authorization': '49641e041b219795555babdb21a8970fa18a3ef3',
+      'content-type': 'application/json',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    }
+    const json_data = {
+      'query': '{\n  filterTokens(\n    filters: {\n      network: [1]\n    }\n    limit: 200\n    tokens:["' + token_address + '"]\n  ) {\n    results {\n      change1\n      change4\n      change12\n      change24\n      createdAt\n      volume1\n      volume4\n      volume12\n      isScam\n      holders\n      liquidity\n      marketCap\n      priceUSD\n      volume24\n      pair {\n        token0Data{symbol}\n        token1Data{symbol}\n        address\n      }\n      exchanges {\n        address\n      }\n      token {\n        address\n        decimals\n        name\n        networkId\n        symbol\n        \n      }\n    }\n  }\n}',
+    };
+
+    const response = await axios.post('https://graph.defined.fi/graphql', json_data, {headers});
+    return new Decimal(response.data.data.filterTokens.results[0].priceUSD);
   } catch (e) {
     console.error(e);
     return new Decimal(0);
