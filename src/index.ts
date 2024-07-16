@@ -5,6 +5,7 @@ import { ethers } from 'ethers';
 import { Web3 } from 'web3';
 import { Network, Alchemy } from "alchemy-sdk";
 import Decimal from 'decimal.js';
+import './logger';
 import {
   addAlchemyContextToRequest,
   validateAlchemySignature,
@@ -15,6 +16,8 @@ import {
   PairToken,
   getEthereumTokenUSD,
 } from "./webhooksUtil";
+import { connect } from "http2";
+import { clear } from "console";
 
 dotenv.config();
 
@@ -87,9 +90,11 @@ const main = async () => {
   var tokens = new Map<string, Token>();
 
   let timer: NodeJS.Timeout | null = null;
+  let timer_ws: NodeJS.Timeout | null = null;
   var PARSING: Boolean = false;
   var ARRIVING: Boolean = false;
   var block_timestamp: string;
+  var ETH_LATEST_PRICE: Decimal;
 
   async function parseSwapEvents() {
     if (logs.length == 0) return;
@@ -102,7 +107,10 @@ const main = async () => {
     console.log(`started parsing block:${currentBlockNumber} at: ` + getCurrentTimeISOString());
 
     // Fetch ETH price
-    var ETH_LATEST_PRICE = await getEthereumTokenUSD('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
+    const eth_current_price = await getEthereumTokenUSD('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
+    if (!eth_current_price.isZero()) {
+      ETH_LATEST_PRICE = eth_current_price;
+    }
     console.log(`Current ETH Price ${ETH_LATEST_PRICE}`);
     // Example: Extract token swap details
 
@@ -240,19 +248,30 @@ const main = async () => {
     ]
   }
 
-  alchemy.ws.on(filter, async (log) => {
-    if (!ARRIVING) {
-      ARRIVING = true;
-      console.log("================");
-      block_timestamp = getCurrentTimeISOString();
-      console.log(`arrived block:${log.blockNumber} at: ` + block_timestamp);
-    }
-    if (timer) {
-      clearTimeout(timer);
-    }
-    timer = setTimeout(parseSwapEvents, 300);
-    logs.push(log);
-  })
+  function connectWebsocket() {
+    console.log("connecting websocket");
+    alchemy.ws.removeAllListeners();
+    timer_ws = setTimeout(connectWebsocket, 15 * 1000);
+    alchemy.ws.on(filter, async (log) => {
+      if (!ARRIVING) {
+        ARRIVING = true;
+        console.log("================");
+        block_timestamp = getCurrentTimeISOString();
+        console.log(`arrived block:${log.blockNumber} at: ` + block_timestamp);
+      }
+      if (timer) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(parseSwapEvents, 300);
+      logs.push(log);
+      if (timer_ws) {
+        clearTimeout(timer_ws);
+      }
+      timer_ws = setTimeout(connectWebsocket, 15 * 1000);
+    }) 
+  }
+
+  connectWebsocket();
   // Listen to Alchemy Notify webhook events
   app.listen(port, host, () => {
     console.log(`Example Alchemy Notify app listening at ${host}:${port}`);

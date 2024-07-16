@@ -7,7 +7,7 @@ import { Web3 } from 'web3'
 import Decimal from 'decimal.js'
 import { Client } from 'pg';
 import * as fs from 'fs';
-import { ReadableStreamDefaultController } from "stream/web";
+import './logger';
 
 export interface AlchemyRequest extends Request {
   alchemy: {
