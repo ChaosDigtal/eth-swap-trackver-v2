@@ -73,7 +73,7 @@ export const getEthereumTokenUSD = async (token_address: string) => {
     const headers = {
       'accept': 'application/json, multipart/mixed',
       'accept-language': 'en-US,en;q=0.9',
-      'authorization': '49641e041b219795555babdb21a8970fa18a3ef3',
+      'authorization': 'd57e4f7f224c8359f433c5882e1180726b1d48e4',
       'content-type': 'application/json',
       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     }
@@ -163,7 +163,7 @@ async function db_save_batch(events: any[], client: Client, block_creation_time:
     });
     // console.log("values",values)
     const query = `
-        INSERT INTO swap_events (
+        INSERT INTO swap_events_ctdev (
           block_number,
           block_hash,
           transaction_hash,

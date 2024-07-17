@@ -112,6 +112,11 @@ const main = async () => {
       ETH_LATEST_PRICE = eth_current_price;
     }
     console.log(`Current ETH Price ${ETH_LATEST_PRICE}`);
+    if (ETH_LATEST_PRICE == undefined) {
+      console.log(`Skipping block ${currentBlockNumber} due to undefined ETH price`);
+      PARSING = false;
+      return;
+    }
     // Example: Extract token swap details
 
     var currentTransactionhash: string = '';
