@@ -95,6 +95,7 @@ const main = async () => {
   var ARRIVING: Boolean = false;
   var block_timestamp: string;
   var ETH_LATEST_PRICE: Decimal;
+  var lastBlockNumberWithETH: number = 0;
 
   async function parseSwapEvents() {
     if (logs.length == 0) return;
@@ -107,9 +108,12 @@ const main = async () => {
     console.log(`started parsing block:${currentBlockNumber} at: ` + getCurrentTimeISOString());
 
     // Fetch ETH price
-    const eth_current_price = await getEthereumTokenUSD('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
-    if (!eth_current_price.isZero()) {
-      ETH_LATEST_PRICE = eth_current_price;
+    if (currentBlockNumber - lastBlockNumberWithETH >= 300) {
+      const eth_current_price = await getEthereumTokenUSD('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
+      if (!eth_current_price.isZero()) {
+        ETH_LATEST_PRICE = eth_current_price;
+        lastBlockNumberWithETH = currentBlockNumber;
+      }
     }
     console.log(`Current ETH Price ${ETH_LATEST_PRICE}`);
     if (ETH_LATEST_PRICE == undefined) {
