@@ -163,7 +163,7 @@ async function db_save_batch(events: any[], client: Client, block_creation_time:
     });
     // console.log("values",values)
     const query = `
-        INSERT INTO swap_events_ctdev (
+        INSERT INTO swap_events (
           block_number,
           block_hash,
           transaction_hash,

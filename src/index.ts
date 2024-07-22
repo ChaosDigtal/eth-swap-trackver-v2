@@ -108,7 +108,7 @@ const main = async () => {
     console.log(`started parsing block:${currentBlockNumber} at: ` + getCurrentTimeISOString());
 
     // Fetch ETH price
-    if (currentBlockNumber - lastBlockNumberWithETH >= 300) {
+    if (currentBlockNumber - lastBlockNumberWithETH >= 1) {
       const eth_current_price = await getEthereumTokenUSD('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
       if (!eth_current_price.isZero()) {
         ETH_LATEST_PRICE = eth_current_price;
