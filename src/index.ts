@@ -279,6 +279,9 @@ const main = async () => {
   async function connectWebsocket() {
     console.log("connecting websocket");
     alchemy.ws.removeAllListeners();
+    if (timer_ws) {
+      clearTimeout(timer_ws);
+    }
     timer_ws = setTimeout(connectWebsocket, 15 * 1000);
     alchemy.ws.on(filter, async (log) => {
       if (!ARRIVING) {
