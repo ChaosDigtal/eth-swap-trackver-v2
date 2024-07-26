@@ -21,7 +21,9 @@ import { clear } from "console";
 
 dotenv.config();
 
-const prod_client = new Client({
+const alchemy_keys = process.env.ALCHEMY_API_KEY?.split(',');
+
+const prod_client = new Client({    
   host: '18.188.193.193',
   database: 'postgres',
   user: 'myuser',
@@ -57,16 +59,30 @@ client.connect((err) => {
 });
 
 
-const settings = {
-  apiKey: process.env.ALCHEMY_API_KEY,
+var settings = {
+  apiKey: alchemy_keys[0],
   network: Network.ETH_MAINNET,
 };
 
-const alchemy = new Alchemy(settings);
+var alchemy = new Alchemy(settings);
+var web3 = new Web3(`https://eth-mainnet.alchemyapi.io/v2/${alchemy_keys[0]}`);
 
+async function switchAlchemyAPI() {
+  const hours = (new Date()).getHours();
+  if (settings.apiKey == alchemy_keys[parseInt(hours / (24 / alchemy_keys.length))]) {
+    return false;
+  }
+  console.log(`Switching Alcehmy API Key to ${alchemy_keys[parseInt(hours / (24 / alchemy_keys.length))]} from ${settings.apiKey}!`);
+  settings.apiKey = alchemy_keys[parseInt(hours / (24 / alchemy_keys.length))];
+  alchemy = new Alchemy(settings);
+  web3 = new Web3(`https://eth-mainnet.alchemyapi.io/v2/${alchemy_keys[parseInt(hours / (24 / alchemy_keys.length))]}`);
+  return true;
+}
 
 const main = async () => {
   const app = express();
+
+  //await switchAlchemyAPI();
 
   const port = process.env.PORT;
   const host = process.env.HOST;
@@ -83,7 +99,6 @@ const main = async () => {
 
   const UNISWAP_V3_SWAP_EVENT = '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67';
   const UNISWAP_V2_SWAP_EVENT = '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822';
-  const web3 = new Web3(`https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`);
 
   var logs: {}[] = [];
   var pairTokens = new Map<string, PairToken>();
@@ -98,6 +113,10 @@ const main = async () => {
   var lastBlockNumberWithETH: number = 0;
 
   async function parseSwapEvents() {
+    const switched = await switchAlchemyAPI();
+    if (switched) {
+      await connectWebsocket();
+    }
     if (logs.length == 0) return;
     PARSING = true;
     ARRIVING = false;
@@ -257,7 +276,7 @@ const main = async () => {
     ]
   }
 
-  function connectWebsocket() {
+  async function connectWebsocket() {
     console.log("connecting websocket");
     alchemy.ws.removeAllListeners();
     timer_ws = setTimeout(connectWebsocket, 15 * 1000);
@@ -267,6 +286,7 @@ const main = async () => {
         console.log("================");
         block_timestamp = getCurrentTimeISOString();
         console.log(`arrived block:${log.blockNumber} at: ` + block_timestamp);
+        console.log(`Alchemy API Key: ${alchemy.config.apiKey}`);
       }
       if (timer) {
         clearTimeout(timer);
@@ -280,7 +300,7 @@ const main = async () => {
     }) 
   }
 
-  connectWebsocket();
+  await connectWebsocket();
   // Listen to Alchemy Notify webhook events
   app.listen(port, host, () => {
     console.log(`Example Alchemy Notify app listening at ${host}:${port}`);
