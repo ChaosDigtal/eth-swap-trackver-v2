@@ -286,7 +286,7 @@ export async function fillUSDAmounts(swapEvents: {}[], ETH2USD: Decimal, client:
 
 
   const block_timestamp = (new Date(parseInt((await web3.eth.getBlock(swapEvents[0].blockNumber)).timestamp) * 1000)).toISOString();
-
+  console.log(`start storing into db block ${swapEvents[0].blockNumber} at` + getCurrentTimeISOString());
   await db_save_batch(swapEvents, client, block_timestamp, ETH2USD, prod_client);
 
 

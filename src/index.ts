@@ -140,6 +140,7 @@ const main = async () => {
       PARSING = false;
       return;
     }
+    console.log(`fetched ETH USD of block ${currentBlockNumber} at: ` + getCurrentTimeISOString());
     // Example: Extract token swap details
 
     var currentTransactionhash: string = '';
@@ -260,10 +261,10 @@ const main = async () => {
       }
       _logs[i].fromAddress = currentFromAddress;
     }
-    console.log("started calculating USD at: " + getCurrentTimeISOString());
+    console.log(`started calculating USD of block ${currentBlockNumber} at: ` + getCurrentTimeISOString());
     await fillUSDAmounts(_logs, ETH_LATEST_PRICE, client, web3,prod_client);
-    console.log("ended parsing at: " + getCurrentTimeISOString());
-    console.log(`finished in ${(((new Date()).getTime() - start_time.getTime()) / 1000.0)} seconds`);
+    console.log(`ended parsing block ${currentBlockNumber} at: ` + getCurrentTimeISOString());
+    console.log(`finished block ${currentBlockNumber} in ${(((new Date()).getTime() - start_time.getTime()) / 1000.0)} seconds`);
     PARSING = false;
   }
 
