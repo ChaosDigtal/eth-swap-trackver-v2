@@ -23,28 +23,12 @@ dotenv.config();
 
 const alchemy_keys = process.env.ALCHEMY_API_KEY?.split(',');
 
-const prod_client = new Client({    
-  host: '18.188.193.193',
-  database: 'postgres',
-  user: 'myuser',
-  password: 'Lapis@123',
-  port: 5432,
-});
-
-// prod_client.connect((err) => {
-//   if (err) {
-//     console.error('Connection error', err.stack);
-//   } else {
-//     console.log('Connected to the prod_client database');
-//   }
-// });
-
 const client = new Client({
-  host: 'trading.copaicjskl31.us-east-2.rds.amazonaws.com',
-  database: 'trading',
-  user: 'creative_dev',
-  password: '4hXWW1%G$',
-  port: 5000,
+  host: process.env.DB_host,
+  database: process.env.DB_database,
+  user: process.env.DB_user,
+  password: process.env.DB_password,
+  port: parseInt(process.env.DB_port ?? '5000'),
   ssl: {
     rejectUnauthorized: false, // Bypass certificate validation
   },
@@ -262,7 +246,7 @@ const main = async () => {
       _logs[i].fromAddress = currentFromAddress;
     }
     console.log(`started calculating USD of block ${currentBlockNumber} at: ` + getCurrentTimeISOString());
-    await fillUSDAmounts(_logs, ETH_LATEST_PRICE, client, web3,prod_client);
+    await fillUSDAmounts(_logs, ETH_LATEST_PRICE, client);
     console.log(`ended parsing block ${currentBlockNumber} at: ` + getCurrentTimeISOString());
     console.log(`finished block ${currentBlockNumber} in ${(((new Date()).getTime() - start_time.getTime()) / 1000.0)} seconds`);
     PARSING = false;

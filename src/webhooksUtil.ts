@@ -8,6 +8,9 @@ import Decimal from 'decimal.js'
 import { Client } from 'pg';
 import * as fs from 'fs';
 import './logger';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export interface AlchemyRequest extends Request {
   alchemy: {
@@ -73,7 +76,7 @@ export const getEthereumTokenUSD = async (token_address: string) => {
     const headers = {
       'accept': 'application/json, multipart/mixed',
       'accept-language': 'en-US,en;q=0.9',
-      'authorization': 'a8d3b922af01a77d58eccda22095efbbef616670',
+      'authorization': process.env.DEFINED_API_KEY,
       'content-type': 'application/json',
       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     }
@@ -115,7 +118,7 @@ const safeNumber = (value: Decimal) => {
   return value;
 };
 
-async function db_save_batch(events: any[], client: Client, block_creation_time: string, ETH2USD: Decimal, prod_client: Client) {
+async function db_save_batch(events: any[], client: Client, block_creation_time: string, ETH2USD: Decimal) {
   const BATCH_SIZE = 100;
 
   const batches = [];
@@ -196,24 +199,10 @@ async function db_save_batch(events: any[], client: Client, block_creation_time:
         }
       })
     }
-    continue;
-
-    try {
-      await prod_client.query(query, values);
-    } catch (err) {
-      console.error('Error saving batch of events', err);
-      fs.appendFile("./logs/prod_error.txt", err + '\n', (err) => {
-        if (err) {
-          console.error('Error writing file', err);
-        } else {
-          console.log('File has been written successfully');
-        }
-      })
-    }
   }
 }
 
-export async function fillUSDAmounts(swapEvents: {}[], ETH2USD: Decimal, client: Client, web3: Web3, prod_client: Client) {
+export async function fillUSDAmounts(swapEvents: {}[], ETH2USD: Decimal, client: Client, web3: Web3) {
   if (swapEvents.length == 0) return;
   var graph = new Map<string, { id: string, ratio: Decimal }[]>()
 
@@ -287,7 +276,7 @@ export async function fillUSDAmounts(swapEvents: {}[], ETH2USD: Decimal, client:
 
   const block_timestamp = (new Date(parseInt((await web3.eth.getBlock(swapEvents[0].blockNumber)).timestamp) * 1000)).toISOString();
   console.log(`start storing into db block ${swapEvents[0].blockNumber} at` + getCurrentTimeISOString());
-  await db_save_batch(swapEvents, client, block_timestamp, ETH2USD, prod_client);
+  await db_save_batch(swapEvents, client, block_timestamp, ETH2USD);
 
 
 }
